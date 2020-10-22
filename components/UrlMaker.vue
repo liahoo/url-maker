@@ -1,20 +1,30 @@
 <template>
   <div>
-    <b-form @submit.prevent="snapShot">
+    <b-input-group prepend="Url" class="mt-3">
+      <b-form-input v-model="extUrl" />
+      <b-input-group-append>
+        <b-button variant="success" @click="parseUrl(extUrl)">
+          Parse
+        </b-button>
+      </b-input-group-append>
+    </b-input-group>
+
+    <b-form class="mt-2 mb-4" @submit.prevent="snapShot">
       <b-form-radio-group
         id="link-type"
         v-model="selectedLinkTypeName"
         :options="linkTypeNames"
-        class="mt-2"
+        class="mt-4"
       />
       <b-input-group class="mb-1">
-        <b-form-input v-model="linkType.scheme" class="col-3 col-md-2" placeholder="scheme" name="scheme" />
-        <b-form-input v-model="linkType.subdomain" class="col-3 col-md-2" placeholder="subdomain" name="subdomain" />
-        <b-form-input v-model="linkType.host" placeholder="Host" name="host" />
+        <b-form-input v-model="selectedLinkType.scheme" class="col-3 col-md-2" placeholder="scheme" name="scheme" />
+        <b-form-input v-model="selectedLinkType.subdomain" class="col-3 col-md-2" placeholder="subdomain" name="subdomain" />
+        <b-form-input v-model="selectedLinkType.host" placeholder="Host" name="host" />
       </b-input-group>
       <b-form-input v-model="path" :placeholder="selectedLinkTypeName.indexOf('OneLink')>=0 ? 'OneLink ID' : 'App ID'" />
-      <hr>
-      <span>Parameters</span>
+      <div class="mt-4">
+        Parameters
+      </div>
       <b-input-group
         v-for="(param, index) in params"
         :key="index"
@@ -54,7 +64,6 @@
         </b-button>
       </div>
     </b-form>
-    <hr>
     <div>
       <a :href="generateUrl()">{{ generateUrl() }}</a>
     </div>
@@ -69,6 +78,7 @@
 export default {
   data () {
     return {
+      extUrl: '',
       linkTypes: [
         {
           name: 'Click',
@@ -108,29 +118,25 @@ export default {
     }
   },
   computed: {
-    linkType () {
+    selectedLinkType () {
       return this.linkTypes.find(lt => lt.name === this.selectedLinkTypeName)
     },
     linkTypeNames () {
       return this.linkTypes.map(lt => lt.name)
     }
   },
-  created () {
-    // this.linkType = this.linkTypes[0]
-    // this.linkTypeNames = this.linkTypes.map(lt => lt.name)
-  },
   methods: {
     changeLinkType () {
-      this.linkType = this.linkTypes.find(lt => lt.name === this.selectedLinkTypeName)
+      this.selectedLinkType = this.linkTypes.find(lt => lt.name === this.selectedLinkTypeName)
     },
-    getHost () {
-      switch (this.$data.linkType) {
-        case 'Click': return 'app.appsflyer.com'
-        case 'Impression': return 'impression.appsflyer.com'
-        case 'OneLink': return '.onelink.me'
-        case 'OneLink(CN)': return '.onelnk.com'
+    findLinkTypeByDomain (subdomain, host) {
+      switch (host) {
+        case '.appsflyer.com': return subdomain === 'app' ? 'Click' : 'Impression'
+        case '.onelink.me': return 'OneLink'
+        // case 'af-link.com': return subdomain === 'app' ? 'Click(CN)' : 'Impression(CN)'
+        // case 'onelnk.com': return 'OneLink(CN)'
         default:
-          return ''
+          return 'Other'
       }
     },
     getParamsUnselected () {
@@ -140,7 +146,7 @@ export default {
       this.$data.params.push({ name: '', value: '', disabled: false })
     },
     generateUrl () {
-      const { scheme, subdomain, host } = this.linkType
+      const { scheme, subdomain, host } = this.selectedLinkType
       let url = subdomain + host + '/' + this.path
       url = url.replace('//', '/')
       url = scheme + url
@@ -152,6 +158,35 @@ export default {
     },
     snapShot () {
       this.snapShots.push(this.generateUrl())
+    },
+    parseUrl (url) {
+      if (url && url.length > 0) {
+        const urlParts = url.split('?')
+        const schemeSepIdx = url.indexOf('://')
+        const scheme = schemeSepIdx > 0 ? urlParts[0].substring(0, schemeSepIdx + 3) : 'https://'
+        const urlWithoutScheme = urlParts[0].substring(schemeSepIdx + 3)
+        const domainSepIdx = urlWithoutScheme.indexOf('/')
+        const domain = urlWithoutScheme.substring(0, domainSepIdx)
+        const domainParts = domain.split('.')
+        const subdomain = domainParts.length <= 2 ? '' : domainParts.slice(0, domainParts.length - 2).join('.')
+        const host = domainParts.length <= 2 ? domain : '.' + domainParts.slice(domainParts.length - 2).join('.')
+        this.selectedLinkTypeName = this.findLinkTypeByDomain(subdomain, host)
+        this.selectedLinkType.scheme = scheme
+        this.selectedLinkType.subdomain = subdomain
+        this.selectedLinkType.host = host
+        this.path = urlWithoutScheme.substring(domainSepIdx + 1)
+
+        if (urlParts.length > 1) {
+          this.params = urlParts[1].split('&').map((q) => {
+            const query = q.split('=')
+            return {
+              name: query[0], value: query[1] || ''
+            }
+          })
+        } else {
+          this.params = []
+        }
+      }
     }
   }
 }
