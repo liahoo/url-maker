@@ -60,7 +60,7 @@
           Add
         </b-button>
         <b-button type="submit" variant="primary">
-          Snap Shot
+          Make
         </b-button>
       </div>
     </b-form>
@@ -70,12 +70,17 @@
     <hr>
     <div v-for="(shot, index) in snapShots" :key="index" class="mt-2">
       <a :href="shot">{{ shot }}</a>
+      <QRCode :text="shot" />
     </div>
   </div>
 </template>
 
 <script>
+import QRCode from './QRCode'
 export default {
+  components: {
+    QRCode
+  },
   data () {
     return {
       extUrl: '',
@@ -114,6 +119,7 @@ export default {
         { name: 'pid', value: '', disabled: false }
       ],
       urlResult: '',
+      qrcodeObj: {},
       snapShots: []
     }
   },
@@ -156,8 +162,18 @@ export default {
       }
       return url
     },
+    makeQRCode (text) {
+      return new QRCode('qrcode', {
+        text,
+        width: 200,
+        height: 200,
+        colorDark: '#0f0', // 绿色
+        colorLight: '#fff',
+        correctLevel: QRCode.CorrectLevel.H
+      }).makeQRCode(text)
+    },
     snapShot () {
-      this.snapShots.push(this.generateUrl())
+      this.snapShots.unshift(this.generateUrl())
     },
     parseUrl (url) {
       if (url && url.length > 0) {
