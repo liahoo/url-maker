@@ -6,6 +6,11 @@
         <b-button variant="success" @click="parseUrl(extUrl)">
           Parse
         </b-button>
+        <b-button variant="dark">
+          <router-link to="/scanner/qrcode">
+            <b-icon-camera variant="light" />
+          </router-link>
+        </b-button>
       </b-input-group-append>
     </b-input-group>
 
@@ -76,10 +81,12 @@
 </template>
 
 <script>
+import { BIconCamera } from 'bootstrap-vue'
 import QRCode from './QRCode'
 export default {
   components: {
-    QRCode
+    QRCode,
+    BIconCamera
   },
   data () {
     return {
@@ -129,6 +136,13 @@ export default {
     },
     linkTypeNames () {
       return this.linkTypes.map(lt => lt.name)
+    }
+  },
+  created () {
+    const url = this.$route.query.url
+    if (url && url.length > 0) {
+      this.extUrl = url
+      this.parseUrl(url)
     }
   },
   methods: {
